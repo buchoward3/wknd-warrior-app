@@ -1,0 +1,180 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+import { api } from './api';
+
+const WeekendFinder = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [weekends, setWeekends] = useState(null);
+  const [error, setError] = useState('');
+
+  const findWeekends = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const data = await api.findWeekends();
+      setWeekends(data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to find weekends. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    findWeekends();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      <nav className="bg-gray-800 p-4 border-b border-gray-700">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-black">
+            <span className="text-amber-400">WKND</span> WARRIOR
+          </h1>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-4 py-2 text-amber-400 hover:text-amber-300 transition"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={logout}
+              className="px-4 py-2 text-gray-400 hover:text-gray-300 transition"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold mb-2">Weekend Finder</h2>
+          <p className="text-gray-400">Scanning the next 6 months for your perfect weekends...</p>
+        </div>
+
+        {error && (
+          <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-500/20 border border-red-500 rounded text-red-400">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-amber-400 text-2xl animate-pulse mb-4">
+              🔍 Scanning events...
+            </div>
+            <p className="text-gray-400">This might take a moment while we check all your artists and teams</p>
+          </div>
+        ) : weekends && weekends.matched_events && weekends.matched_events.length > 0 ? (
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6 text-center">
+              <div className="text-5xl font-bold text-amber-400 mb-2">
+                {weekends.matched_events.length}
+              </div>
+              <p className="text-xl text-gray-300">Perfect Weekends Found!</p>
+            </div>
+
+            <div className="space-y-6">
+              {weekends.matched_events.map((event, index) => (
+                <div key={index} className="bg-gray-800 p-6 rounded-lg border-2 border-amber-400/30 hover:border-amber-400 transition">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-2xl font-bold text-amber-400 mb-2">
+                        {event.type === 'concert' ? '🎵 ' : '🏈 '}
+                        {event.name}
+                      </h3>
+                      <p className="text-gray-300 text-lg">
+                        {event.type === 'concert' ? event.artist : event.teams}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-400">Match Score</div>
+                      <div className="text-2xl font-bold text-amber-400">{event.match_score}%</div>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4 text-gray-300">
+                    <div>
+                      <span className="text-gray-500">📅 Date:</span><br />
+                      {new Date(event.date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">📍 Venue:</span><br />
+                      {event.venue}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">🌍 Location:</span><br />
+                      {event.city}, {event.state}
+                    </div>
+                  </div>
+
+                  {event.price_min && (
+                    <div className="mt-4 flex justify-between items-center">
+                      <span className="text-gray-400">
+                        💰 ${event.price_min} - ${event.price_max}
+                      </span>
+                      {event.ticket_url && (
+                        
+                          href={event.ticket_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-amber-400 text-gray-900 font-bold rounded hover:bg-amber-300 transition"
+                        >
+                          Get Tickets →
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto text-center py-12">
+            <div className="text-6xl mb-4">😔</div>
+            <h3 className="text-2xl font-bold mb-4">No Perfect Weekends Found Yet</h3>
+            <p className="text-gray-400 mb-6">
+              We couldn't find any weekends where your favorite artists and teams are playing in the same area.
+              This could be because:
+            </p>
+            <ul className="text-gray-500 space-y-2 mb-8">
+              <li>• You haven't connected your music service yet</li>
+              <li>• You haven't selected your favorite teams</li>
+              <li>• There are no matching events in the next 6 months</li>
+            </ul>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-3 bg-amber-400 text-gray-900 font-bold rounded hover:bg-amber-300 transition"
+            >
+              Update Preferences
+            </button>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="text-center mt-8">
+            <button
+              onClick={findWeekends}
+              className="px-6 py-3 border-2 border-amber-400 text-amber-400 font-bold rounded hover:bg-amber-400 hover:text-gray-900 transition"
+            >
+              Search Again
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default WeekendFinder;
